@@ -133,6 +133,10 @@ BitIO - Bit Stream I/O
 
 Bit I/O Stream with an arbitrary I/O handle
 
+=head1 SEE ALSO
+
+L<http://www.geocities.jp/m_hiroi/light/pyalgo30.html> (in Japanese)
+
 =head1 AUTHOR
 
 Naoya Ito, E<lt>naoya at bloghackers.netE<gt>
