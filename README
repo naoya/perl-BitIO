@@ -1,0 +1,37 @@
+NAME
+    BitIO - Bit Stream I/O
+
+SYNOPSIS
+      use BitIO;
+
+      my $h = IO::String->new;
+      my $w = Bit::IO->new($h);
+      $w->putbit(0);
+      $w->putbit(0);
+      $w->putbit(0);
+      $w->putbit(0);
+      $w->putbit(0);
+      $w->putbit(0);
+      $w->putbit(0);
+      $w->putbit(1);
+      $w->putbits(8, 126);
+
+      $h->seek(0, 0);
+
+      my $r = Bit::IO->new($h);
+      is $r->getbits(8), 1;
+      is $r->getbits(8), 126;
+
+DESCRIPTION
+    Bit I/O Stream with an arbitrary I/O handle
+
+AUTHOR
+    Naoya Ito, <naoya at bloghackers.net>
+
+COPYRIGHT AND LICENSE
+    Copyright (C) 2009 by Naoya Ito
+
+    This library is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself, either Perl version 5.8.8 or, at
+    your option, any later version of Perl 5 you may have available.
+
