@@ -1,6 +1,10 @@
 Changes
+lib/BitIO.pm
 Makefile.PL
 MANIFEST
+META.yml
 README
-t/BitIO.t
-lib/BitIO.pm
+t/00-load.t
+t/01-read.t
+t/02-write.t
+
