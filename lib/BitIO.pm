@@ -112,7 +112,7 @@ BitIO - Bit Stream I/O
   use BitIO;
 
   my $h = IO::String->new;
-  my $w = Bit::IO->new($h);
+  my $w = BitIO->new($h);
   $w->putbit(0);
   $w->putbit(0);
   $w->putbit(0);
@@ -125,7 +125,7 @@ BitIO - Bit Stream I/O
 
   $h->seek(0, 0);
 
-  my $r = Bit::IO->new($h);
+  my $r = BitIO->new($h);
   is $r->getbits(8), 1;
   is $r->getbits(8), 126;
 
