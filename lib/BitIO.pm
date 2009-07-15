@@ -8,7 +8,8 @@ use Params::Validate qw/validate_pos HANDLE/;
 
 use constant HANDLER => 0;
 use constant BUFF    => 1;
-use constant BITLEN  => 2;
+use constant GETCNT  => 2;
+use constant PUTCNT  => 3;
 
 sub new {
     my ($class, $handler) = validate_pos(@_, 1, { type => HANDLE });
@@ -16,7 +17,8 @@ sub new {
 
     $self->[HANDLER] = $handler;
     $self->[BUFF]    = 0;
-    $self->[BITLEN]  = 0;
+    $self->[GETCNT]  = 0;
+    $self->[PUTCNT]  = 8;
 
     return $self;
 }
@@ -32,29 +34,53 @@ sub getc {
 
 sub getbit {
     my $self = shift;
-    $self->[BITLEN]--;
-    if ($self->[BITLEN] < 0) {
+    $self->[GETCNT]--;
+    if ($self->[GETCNT] < 0) {
         $self->[BUFF] = $self->getc;
         if (not defined $self->[BUFF]) {
             return;
         }
-        $self->[BITLEN] = 7;
+        $self->[GETCNT] = 7;
     }
-    return ($self->[BUFF] >> $self->[BITLEN]) & 1;
+    return ($self->[BUFF] >> $self->[GETCNT]) & 1;
 }
+
+sub rightbits {
+    my ($n, $x) = @_;
+    return ($x & ((1 << $n) - 1));
+}
+
+# sub getbits {
+#     my ($self, $n) = @_;
+#     my $v = 0;
+#     my $p = 1 << ($n - 1);
+#     while ($p > 0) {
+#         my $bit = $self->getbit;
+#         if ($bit and $bit == 1) {
+#             $v |= $p;
+#         }
+#         $p >>= 1;
+#     }
+#     return $v;
+# }
 
 sub getbits {
     my ($self, $n) = @_;
     my $v = 0;
-    my $p = 1 << ($n - 1);
-    while ($p > 0) {
-        my $bit = $self->getbit;
-        if ($bit and $bit == 1) {
-            $v |= $p;
-        }
-        $p >>= 1;
+    while ($n > $self->[GETCNT]) {
+        $n -= $self->[GETCNT];
+        $v |= ($self->[BUFF] & ((1 << $self->[GETCNT]) - 1)) << $n;
+        $self->[BUFF] = $self->getc;
+        $self->[GETCNT] = 8;
     }
-    return $v;
+
+    $self->[GETCNT] -= $n;
+
+    if (not defined $self->[BUFF]) {
+        return $v;
+    }
+
+    return $v | (($self->[BUFF] >> $self->[GETCNT]) & ((1 << $n) - 1));
 }
 
 sub putc {
@@ -64,42 +90,30 @@ sub putc {
 
 sub putbit {
     my ($self, $bit) = @_;
-    $self->[BITLEN]++;
-
+    $self->[PUTCNT]--;
     if ($bit > 0) {
-        $self->[BUFF] |= (1 << 8 - $self->[BITLEN]);
+        $self->[BUFF] |= (1 << $self->[PUTCNT]);
     }
 
-    if ($self->[BITLEN] == 8) {
+    if ($self->[PUTCNT] == 0) {
         $self->putc($self->[BUFF]);
-        $self->[BUFF]   = 0;
-        $self->[BITLEN] = 0;
+        $self->[BUFF] = 0;
+        $self->[PUTCNT] = 8;
     }
 }
 
 sub putbits {
     my ($self, $n, $v) = @_;
-    if ($n > 0) {
-        my $p = 1 << ($n - 1);
-        while ($p > 0) {
-            $self->putbit( $v & $p );
-            $p >>= 1;
-        }
+    while ($n >= $self->[PUTCNT]) {
+        $n -= $self->[PUTCNT];
+        $self->[BUFF] |= (($v >> $n) & ((1 << $self->[PUTCNT]) - 1));
+        $self->putc($self->[BUFF]);
+        $self->[BUFF]   = 0;
+        $self->[PUTCNT] = 8;
     }
+    $self->[PUTCNT] -= $n;
+    $self->[BUFF] |= ($v & ((1 << $n) - 1)) << $self->[PUTCNT];
 }
-
-# sub putbits {
-#     my ($self, $n, $v) = @_;
-#     while ($n >= $self->[BITLEN]) {
-#         $n -= $self->[BITLEN];
-#         $self->[BUFF] |= ($self->[BITLEN] & ((1 << ($v >> $n)) - 1));
-#         $self->putc($self->[BUFF]);
-#         $self->[BUFF]   = 0;
-#         $self->[BITLEN] = 8;
-#     }
-#     $self->[BITLEN] -= $n;
-#     $self->[BUFF] |= ($v & ((1 << $n) - 1)) << $self->[BITLEN];
-# }
 
 sub rewind {
     my $self = shift;
@@ -118,7 +132,7 @@ sub read {
 
 sub flush {
     my $self = shift;
-    if ($self->[BITLEN] < 8) {
+    if ($self->[GETCNT] < 8) {
         $self->putc($self->[BUFF]);
     }
 }
