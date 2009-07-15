@@ -160,6 +160,7 @@ BitIO - Bit Stream I/O
   $w->putbit(0);
   $w->putbit(1);
   $w->putbits(8, 126);
+  $w->flush;
 
   $h->seek(0, 0);
 
