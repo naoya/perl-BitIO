@@ -56,7 +56,7 @@ use IO::String;
     is $b->getc, undef;
 
     $b->putbit(1);
-    $b->close;
+    $b->flush;
     $h->seek(0, 0);
     is $b->getc, 1;
 }

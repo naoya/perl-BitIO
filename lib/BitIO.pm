@@ -1,28 +1,29 @@
 package BitIO;
 use strict;
 use warnings;
-use base qw/Class::Accessor::Lvalue::Fast/;
 
 our $VERSION = '0.01';
 
 use Params::Validate qw/validate_pos HANDLE/;
 
-__PACKAGE__->mk_accessors(qw/stream buff bitlen/);
+use constant HANDLER => 0;
+use constant BUFF    => 1;
+use constant BITLEN  => 2;
 
 sub new {
     my ($class, $handler) = validate_pos(@_, 1, { type => HANDLE });
-    my $self = $class->SUPER::new;
+    my $self = bless [], $class;
 
-    $self->stream = $handler;
-    $self->buff    = 0;
-    $self->bitlen = 0;
+    $self->[HANDLER] = $handler;
+    $self->[BUFF]    = 0;
+    $self->[BITLEN]  = 0;
 
     return $self;
 }
 
 sub getc {
     my $self = shift;
-    my $c = $self->stream->getc;
+    my $c = $self->[HANDLER]->getc;
     if (defined $c) {
         return unpack('C', $c);
     }
@@ -31,15 +32,15 @@ sub getc {
 
 sub getbit {
     my $self = shift;
-    $self->bitlen--;
-    if ($self->bitlen < 0) {
-        $self->buff = $self->getc;
-        if (not defined $self->buff) {
+    $self->[BITLEN]--;
+    if ($self->[BITLEN] < 0) {
+        $self->[BUFF] = $self->getc;
+        if (not defined $self->[BUFF]) {
             return;
         }
-        $self->bitlen = 7;
+        $self->[BITLEN] = 7;
     }
-    return ($self->buff >> $self->bitlen) & 1;
+    return ($self->[BUFF] >> $self->[BITLEN]) & 1;
 }
 
 sub getbits {
@@ -58,21 +59,21 @@ sub getbits {
 
 sub putc {
     my ($self, $c) = @_;
-    $self->stream->write(pack('C', $c), 1);
+    $self->[HANDLER]->write(pack('C', $c), 1);
 }
 
 sub putbit {
     my ($self, $bit) = @_;
-    $self->bitlen++;
+    $self->[BITLEN]++;
 
     if ($bit > 0) {
-        $self->buff |= (1 << 8 - $self->bitlen);
+        $self->[BUFF] |= (1 << 8 - $self->[BITLEN]);
     }
 
-    if ($self->bitlen == 8) {
-        $self->putc($self->buff);
-        $self->buff   = 0;
-        $self->bitlen = 0;
+    if ($self->[BITLEN] == 8) {
+        $self->putc($self->[BUFF]);
+        $self->[BUFF]   = 0;
+        $self->[BITLEN] = 0;
     }
 }
 
@@ -87,15 +88,38 @@ sub putbits {
     }
 }
 
+# sub putbits {
+#     my ($self, $n, $v) = @_;
+#     while ($n >= $self->[BITLEN]) {
+#         $n -= $self->[BITLEN];
+#         $self->[BUFF] |= ($self->[BITLEN] & ((1 << ($v >> $n)) - 1));
+#         $self->putc($self->[BUFF]);
+#         $self->[BUFF]   = 0;
+#         $self->[BITLEN] = 8;
+#     }
+#     $self->[BITLEN] -= $n;
+#     $self->[BUFF] |= ($v & ((1 << $n) - 1)) << $self->[BITLEN];
+# }
+
 sub rewind {
     my $self = shift;
-    $self->stream->seek(0, 0);
+    $self->[HANDLER]->seek(0, 0);
 }
 
-sub close {
+sub write {
+    my ($self, $v) = @_;
+    $self->[HANDLER]->print($v);
+}
+
+sub read {
+    my ($self, $r_buff, $len) = @_;
+    $self->[HANDLER]->read($$r_buff, $len);
+}
+
+sub flush {
     my $self = shift;
-    if ($self->bitlen < 8) {
-        $self->putc($self->buff);
+    if ($self->[BITLEN] < 8) {
+        $self->putc($self->[BUFF]);
     }
 }
 
